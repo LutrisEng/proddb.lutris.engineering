@@ -1,5 +1,31 @@
 FROM golang:1.18.1-bullseye AS base-golang
+
+WORKDIR /goarchos
+COPY goarch.go .
+RUN go build goarch.go
+COPY goos.go .
+RUN go build goos.go
+RUN cp goarch goos /usr/local/bin/
+
 FROM debian:bullseye-20220418 AS base-debian
+
+COPY --from=base-golang /usr/local/bin/goos /usr/local/bin/
+COPY --from=base-golang /usr/local/bin/goarch /usr/local/bin/
+
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y \
+        curl \
+        tmux \
+        iputils-arping \
+        iputils-clockdiff \
+        iputils-ping \
+        iputils-tracepath \
+        netcat-openbsd \
+        iproute2 \
+        net-tools \
+    && \
+    apt-get clean
 
 FROM base-golang AS overmind
 
@@ -9,43 +35,25 @@ WORKDIR /overmind
 RUN go build
 RUN ./overmind -v
 
-FROM base-golang AS cockroach
-
-RUN apt-get update
-RUN apt-get install -y curl
+FROM base-debian AS cockroach
 
 WORKDIR /cockroach
-COPY goarch.go .
-RUN go build goarch.go
-COPY goos.go .
-RUN go build goos.go
 ARG COCKROACK_VERSION=21.2.10
-RUN echo cockroach-v${COCKROACK_VERSION}.$(./goos)-$(./goarch)
-RUN curl https://binaries.cockroachdb.com/cockroach-v${COCKROACK_VERSION}.$(./goos)-$(./goarch).tgz | tar -xz
-RUN mv cockroach-v${COCKROACK_VERSION}.$(./goos)-$(./goarch)/cockroach .
+RUN echo Downloading CockroachDB from https://binaries.cockroachdb.com/cockroach-v${COCKROACK_VERSION}.$(goos)-$(goarch).tgz
+RUN curl https://binaries.cockroachdb.com/cockroach-v${COCKROACK_VERSION}.$(goos)-$(goarch).tgz | tar -xz
+RUN mv cockroach-v${COCKROACK_VERSION}.$(goos)-$(goarch)/cockroach .
 RUN ./cockroach version
 
-FROM base-golang AS cloudflared
-
-RUN apt-get update
-RUN apt-get install -y curl
+FROM base-debian AS cloudflared
 
 WORKDIR /cloudflared
-COPY goarch.go .
-RUN go build goarch.go
-COPY goos.go .
-RUN go build goos.go
-RUN echo cloudflared-$(./goos)-$(./goarch)
 ARG CLOUDFLARED_VERSION=2022.4.1
-RUN curl -Lo cloudflared https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-$(./goos)-$(./goarch)
+RUN echo Downloading cloudflared from https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-$(goos)-$(goarch)
+RUN curl -Lo cloudflared https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-$(goos)-$(goarch)
 RUN chmod +x cloudflared
 RUN ./cloudflared version
 
 FROM base-debian
-
-RUN apt-get update && \
-    apt-get install -y tmux iputils-ping netcat-openbsd && \
-    apt-get clean
 
 COPY --from=cockroach /cockroach/cockroach /usr/local/bin/
 COPY --from=overmind /overmind/overmind /usr/local/bin/
