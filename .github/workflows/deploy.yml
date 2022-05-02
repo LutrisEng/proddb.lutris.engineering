@@ -19,6 +19,6 @@ jobs:
           context: .
           platforms: linux/amd64
       - name: Deploy
-        run: fly deploy --local-only
+        run: flyctl deploy --local-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
