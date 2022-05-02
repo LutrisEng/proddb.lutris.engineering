@@ -9,15 +9,20 @@ WORKDIR /overmind
 RUN go build
 RUN ./overmind -v
 
-FROM base-debian AS cockroach
+FROM base-golang AS cockroach
 
 RUN apt-get update
 RUN apt-get install -y curl
 
 WORKDIR /cockroach
+COPY goarch.go .
+RUN go build goarch.go
+COPY goos.go .
+RUN go build goos.go
 ARG COCKROACK_VERSION=21.2.10
-RUN curl https://binaries.cockroachdb.com/cockroach-v${COCKROACK_VERSION}.linux-amd64.tgz | tar -xz
-RUN mv cockroach-v${COCKROACK_VERSION}.linux-amd64/cockroach .
+RUN echo cockroach-v${COCKROACK_VERSION}.$(./goos)-$(./goarch)
+RUN curl https://binaries.cockroachdb.com/cockroach-v${COCKROACK_VERSION}.$(./goos)-$(./goarch).tgz | tar -xz
+RUN mv cockroach-v${COCKROACK_VERSION}.$(./goos)-$(./goarch)/cockroach .
 RUN ./cockroach version
 
 FROM base-golang AS cloudflared
