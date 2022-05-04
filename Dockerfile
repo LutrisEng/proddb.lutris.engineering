@@ -47,7 +47,7 @@ RUN ./cockroach version
 FROM base-debian AS cloudflared
 
 WORKDIR /cloudflared
-ARG CLOUDFLARED_VERSION=2022.4.1
+ARG CLOUDFLARED_VERSION=2022.5.0
 RUN echo Downloading cloudflared from https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-$(goos)-$(goarch)
 RUN curl -Lo cloudflared https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-$(goos)-$(goarch)
 RUN chmod +x cloudflared
@@ -62,6 +62,7 @@ COPY --from=cloudflared /cloudflared/cloudflared /usr/local/bin/
 COPY init_cluster.sh /usr/local/bin/
 COPY start_fly.sh /usr/local/bin/
 COPY cloudflared.sh /usr/local/bin/
+COPY run_sql_console.sh /usr/local/bin/
 COPY Procfile /app/
 WORKDIR /app
 
